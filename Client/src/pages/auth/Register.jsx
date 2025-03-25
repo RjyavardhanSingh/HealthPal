@@ -1,9 +1,10 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { FcGoogle } from 'react-icons/fc';
-import RotatingLogo from '../../components/RotatingLogo';
+import Particles from "react-tsparticles";
+import { loadFull } from "tsparticles";
+import { toast } from 'react-toastify';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -31,6 +32,13 @@ const Register = () => {
   const fileInputRef = useRef(null);
   const [profileImageUrl, setProfileImageUrl] = useState('');
   const [profileImageFile, setProfileImageFile] = useState(null);
+  const particlesInit = useRef(null);
+
+  // Initialize particles
+  const initParticles = async (engine) => {
+    particlesInit.current = engine;
+    await loadFull(engine);
+  };
   
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -81,9 +89,11 @@ const Register = () => {
         throw new Error('Failed to register with Google');
       }
       
+      toast.success('Registration successful!');
       navigate('/');
     } catch (err) {
       setError('Failed to sign in with Google: ' + err.message);
+      toast.error('Google sign-in failed');
     } finally {
       setLoading(false);
     }
@@ -163,132 +173,188 @@ const Register = () => {
         throw new Error('Failed to register user in backend');
       }
       
+      toast.success('Registration successful!');
       navigate('/');
     } catch (err) {
       setError('Failed to create account: ' + err.message);
+      toast.error('Registration failed');
     } finally {
       setLoading(false);
     }
   };
-  
-  return (
-    <div className="bg-gradient-to-b from-sky-50 to-white min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <motion.div 
-        className="sm:mx-auto sm:w-full sm:max-w-md"
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-      >
-        <div className="flex justify-center">
-          <RotatingLogo />
-        </div>
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">Create your account</h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          Already have an account?{' '}
-          <Link to="/login" className="font-medium text-teal-600 hover:text-teal-500">
-            sign in
-          </Link>
-        </p>
-      </motion.div>
 
-      <motion.div 
-        className="mt-8 sm:mx-auto sm:w-full sm:max-w-md"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 0.2 }}
-      >
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          {error && (
-            <motion.div 
-              className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              transition={{ duration: 0.3 }}
-            >
-              <p>{error}</p>
-            </motion.div>
-          )}
-          
-          {/* Google sign-up button */}
-          <motion.button
-            onClick={handleGoogleSignIn}
-            disabled={loading}
-            className="w-full flex justify-center py-2.5 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition-all"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+  return (
+    <div className="relative min-h-screen bg-gradient-to-b from-blue-50 to-blue-100 py-8 px-4 sm:px-6 lg:px-8 overflow-auto">
+      <style>{`
+        @keyframes pulse {
+          0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+          70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+        }
+        
+        .pulse {
+          animation: pulse 2s infinite;
+        }
+        
+        @keyframes heartbeat {
+          0% { transform: scale(1); }
+          15% { transform: scale(1.15); }
+          30% { transform: scale(1); }
+          45% { transform: scale(1.15); }
+          60% { transform: scale(1); }
+          100% { transform: scale(1); }
+        }
+        
+        .heartbeat {
+          animation: heartbeat 2s ease-in-out infinite;
+        }
+        
+        .health-pattern {
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E%3Cpath d='M30 30 L30 20 L20 20 L20 30 L10 30 L10 40 L20 40 L20 50 L30 50 L30 40 L40 40 L40 30 z' fill='%233b82f620'/%3E%3C/svg%3E");
+          background-size: 60px 60px;
+        }
+        
+        .card-shadow {
+          box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.1), 0 4px 6px -2px rgba(59, 130, 246, 0.05);
+        }
+      `}</style>
+
+      {/* Particles Background */}
+      <Particles
+        id="tsparticles"
+        init={initParticles}
+        options={{
+          fullScreen: {
+            enable: false,
+            zIndex: -1
+          },
+          particles: {
+            number: { value: 15, density: { enable: true, value_area: 1000 } },
+            color: { value: ["#3b82f6", "#60a5fa", "#2563eb"] },
+            shape: { type: "circle" },
+            opacity: { value: 0.2, random: true },
+            size: { value: 4, random: true, anim: { enable: true, speed: 1 } },
+            move: {
+              enable: true,
+              speed: 0.5,
+              direction: "none",
+              random: true,
+              straight: false,
+              outMode: "out"
+            },
+            links: {
+              enable: true,
+              distance: 150,
+              color: "#60a5fa",
+              opacity: 0.1,
+              width: 1
+            }
+          },
+          interactivity: {
+            detect_on: "canvas",
+            events: {
+              onhover: { enable: true, mode: "bubble" },
+              onclick: { enable: false }
+            },
+            modes: {
+              bubble: { distance: 200, size: 6, duration: 2, opacity: 0.3 }
+            }
+          }
+        }}
+        style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", zIndex: -1 }}
+      />
+
+      {/* Health pattern overlay */}
+      <div className="absolute inset-0 health-pattern opacity-10 pointer-events-none"></div>
+
+      <div className="mx-auto max-w-md sm:max-w-xl md:max-w-2xl mb-12">
+        <div className="text-center">
+          <motion.div 
+            className="mx-auto h-14 w-14 rounded-full bg-blue-500 flex items-center justify-center heartbeat"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: "spring", stiffness: 260, damping: 20 }}
           >
-            <FcGoogle className="h-5 w-5 mr-2" />
-            Sign up with Google
-          </motion.button>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+          </motion.div>
           
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Or continue with</span>
-              </div>
-            </div>
-          </div>
+          <motion.h2 
+            className="mt-6 text-3xl font-bold tracking-tight text-blue-900"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            Create your HealthPal account
+          </motion.h2>
           
-          <motion.form 
-            className="mt-6 space-y-6" 
-            onSubmit={handleSubmit}
+          <motion.p 
+            className="mt-2 text-sm text-gray-600"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.4, delay: 0.4 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
           >
-            {/* Profile image upload */}
-            <div className="flex justify-center">
-              <div className="mb-4 relative">
-                <motion.div
-                  whileHover={{ scale: 1.05 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  {profileImageUrl ? (
-                    <img 
-                      src={profileImageUrl} 
-                      alt="Profile preview" 
-                      className="w-24 h-24 rounded-full object-cover border-2 border-teal-300 shadow-md"
-                    />
-                  ) : (
-                    <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center border-2 border-gray-300">
-                      <svg className="h-12 w-12 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-                      </svg>
-                    </div>
-                  )}
-                </motion.div>
-                <input
-                  type="file"
-                  id="profileImage"
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                  accept="image/*"
-                  className="hidden"
-                />
-                <motion.button 
-                  type="button"
-                  onClick={() => fileInputRef.current.click()}
-                  className="absolute bottom-0 right-0 bg-teal-600 text-white rounded-full p-1.5 shadow-md"
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+            Already have an account?{' '}
+            <Link to="/login" className="font-medium text-blue-600 hover:text-blue-500">
+              Sign in
+            </Link>
+          </motion.p>
+        </div>
+
+        {/* Registration Form */}
+        <motion.div 
+          className="mt-8 bg-white p-6 shadow-lg rounded-lg card-shadow"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+        >
+          {error && (
+            <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
-                </motion.button>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-red-600">{error}</p>
+                </div>
               </div>
             </div>
-            
-            {/* Form fields */}
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                Full Name
-              </label>
-              <div className="mt-1">
+          )}
+
+          <div className="mb-6">
+            <button
+              onClick={handleGoogleSignIn}
+              disabled={loading}
+              className="w-full flex justify-center items-center gap-2 py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              <svg className="h-5 w-5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="#34A853" d="M12 22c2.7 0 4.95-.9 6.6-2.4l-3.57-2.77c-.99.66-2.25 1.07-3.72 1.07-2.86 0-5.28-1.93-6.14-4.53H1.86v2.84C3.5 19.98 7.45 22 12 22z" />
+                <path fill="#FBBC05" d="M5.86 13.37c-.23-.66-.36-1.36-.36-2.07s.13-1.41.36-2.07V6.39H1.86C.68 8.61 0 11.21 0 14s.68 5.39 1.86 7.61l4-3.24z" />
+                <path fill="#EA4335" d="M12 4.93c1.47 0 2.79.51 3.83 1.51l2.85-2.85C16.95 1.9 14.7 1 12 1 7.45 1 3.5 3.02 1.86 6.39l4 3.24c.86-2.6 3.28-4.53 6.14-4.53z" />
+              </svg>
+              Sign up with Google
+            </button>
+          </div>
+
+          <div className="relative mb-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-gray-500">Or register with email</span>
+            </div>
+          </div>
+
+          <form className="space-y-6" onSubmit={handleSubmit}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                  Full Name
+                </label>
                 <input
                   id="name"
                   name="name"
@@ -296,16 +362,14 @@ const Register = () => {
                   required
                   value={formData.name}
                   onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 />
               </div>
-            </div>
-            
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email address
-              </label>
-              <div className="mt-1">
+
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                  Email address
+                </label>
                 <input
                   id="email"
                   name="email"
@@ -314,16 +378,16 @@ const Register = () => {
                   required
                   value={formData.email}
                   onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 />
               </div>
             </div>
-            
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
-              <div className="mt-1">
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                  Password
+                </label>
                 <input
                   id="password"
                   name="password"
@@ -332,16 +396,14 @@ const Register = () => {
                   required
                   value={formData.password}
                   onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 />
               </div>
-            </div>
-            
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                Confirm Password
-              </label>
-              <div className="mt-1">
+
+              <div>
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+                  Confirm Password
+                </label>
                 <input
                   id="confirmPassword"
                   name="confirmPassword"
@@ -350,58 +412,66 @@ const Register = () => {
                   required
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 />
               </div>
             </div>
-            
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
-            >
+
+            <div>
               <label htmlFor="role" className="block text-sm font-medium text-gray-700">
                 I am a
               </label>
-              <div className="mt-1">
-                <select
-                  id="role"
-                  name="role"
-                  value={formData.role}
-                  onChange={handleChange}
-                  className="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
+              <div className="mt-1 grid grid-cols-2 gap-4">
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, role: 'patient' }))}
+                  className={`py-2 px-3 rounded-lg text-sm font-medium transition-all duration-300 ${
+                    formData.role === 'patient'
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}
                 >
-                  <option value="patient">Patient</option>
-                  <option value="doctor">Doctor</option>
-                </select>
+                  Patient
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, role: 'doctor' }))}
+                  className={`py-2 px-3 rounded-lg text-sm font-medium transition-all duration-300 ${
+                    formData.role === 'doctor'
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  Doctor
+                </button>
               </div>
-            </motion.div>
-            
-            {/* Doctor specific fields */}
+            </div>
+
             {formData.role === 'doctor' && (
-              <>
+              <div className="space-y-4 border-t border-gray-200 pt-4 mt-4">
+                <h3 className="text-gray-700 font-medium">Doctor Information</h3>
+
                 <div>
                   <label htmlFor="specialization" className="block text-sm font-medium text-gray-700">
                     Specialization
                   </label>
-                  <div className="mt-1">
-                    <input
-                      id="specialization"
-                      name="specialization"
-                      type="text"
-                      required
-                      value={doctorData.specialization}
-                      onChange={handleDoctorDataChange}
-                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
-                    />
-                  </div>
+                  <input
+                    id="specialization"
+                    name="specialization"
+                    type="text"
+                    required
+                    value={doctorData.specialization}
+                    onChange={handleDoctorDataChange}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  />
                 </div>
-                
-                <div>
-                  <label htmlFor="licenseNumber" className="block text-sm font-medium text-gray-700">
-                    License Number
-                  </label>
-                  <div className="mt-1">
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="licenseNumber" className="block text-sm font-medium text-gray-700">
+                      License Number
+                    </label>
                     <input
                       id="licenseNumber"
                       name="licenseNumber"
@@ -409,16 +479,14 @@ const Register = () => {
                       required
                       value={doctorData.licenseNumber}
                       onChange={handleDoctorDataChange}
-                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     />
                   </div>
-                </div>
-                
-                <div>
-                  <label htmlFor="consultationFee" className="block text-sm font-medium text-gray-700">
-                    Consultation Fee ($)
-                  </label>
-                  <div className="mt-1">
+
+                  <div>
+                    <label htmlFor="consultationFee" className="block text-sm font-medium text-gray-700">
+                      Consultation Fee ($)
+                    </label>
                     <input
                       id="consultationFee"
                       name="consultationFee"
@@ -427,91 +495,88 @@ const Register = () => {
                       required
                       value={doctorData.consultationFee}
                       onChange={handleDoctorDataChange}
-                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     />
                   </div>
                 </div>
-              </>
-            )}
-            
-            {/* Additional user details */}
-            <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                Phone Number
-              </label>
-              <div className="mt-1">
-                <input
-                  id="phone"
-                  name="phone"
-                  type="tel"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
-                />
               </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="dateOfBirth" className="block text-sm font-medium text-gray-700">
-                  Date of Birth
-                </label>
-                <div className="mt-1">
+            )}
+
+            <div className="border-t border-gray-200 pt-4 mt-4">
+              <h3 className="text-gray-700 font-medium mb-4">Additional Information</h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+                    Phone Number
+                  </label>
+                  <input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="dateOfBirth" className="block text-sm font-medium text-gray-700">
+                    Date of Birth
+                  </label>
                   <input
                     id="dateOfBirth"
                     name="dateOfBirth"
                     type="date"
                     value={formData.dateOfBirth}
                     onChange={handleChange}
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                   />
                 </div>
               </div>
-              
+
               <div>
                 <label htmlFor="gender" className="block text-sm font-medium text-gray-700">
                   Gender
                 </label>
-                <div className="mt-1">
-                  <select
-                    id="gender"
-                    name="gender"
-                    value={formData.gender}
-                    onChange={handleChange}
-                    className="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
-                  >
-                    <option value="">Select</option>
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
+                <select
+                  id="gender"
+                  name="gender"
+                  value={formData.gender}
+                  onChange={handleChange}
+                  className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                >
+                  <option value="">Select</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
               </div>
             </div>
-            
-            <div>
+
+            <div className="pt-4">
               <button
                 type="submit"
                 disabled={loading}
-                className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
-                {loading ? 'Creating Account...' : 'Sign Up'}
+                {loading ? 'Creating Account...' : 'Create Account'}
               </button>
             </div>
-          </motion.form>
-          
+          </form>
+
           <p className="mt-6 text-xs text-gray-500 text-center">
             By signing up, you agree to our{' '}
-            <a href="#" className="text-primary-600 hover:text-primary-500">
+            <a href="#" className="text-blue-600 hover:text-blue-500">
               Terms of Service
             </a>{' '}
             and{' '}
-            <a href="#" className="text-primary-600 hover:text-primary-500">
+            <a href="#" className="text-blue-600 hover:text-blue-500">
               Privacy Policy
             </a>
           </p>
-        </div>
-      </motion.div>
+        </motion.div>
+      </div>
     </div>
   );
 };

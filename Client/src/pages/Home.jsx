@@ -168,14 +168,7 @@ const customStyles = `
     background-color: rgba(0, 0, 0, 0.2);
     border-radius: 20px;
   }
-  
-  /* Custom background */
-  .bg-pattern {
-    background-color: #f8fafc;
-    background-image: radial-gradient(#e2e8f0 1px, transparent 1px);
-    background-size: 20px 20px;
-  }
-  
+
   /* Custom gradients */
   .gradient-primary {
     background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
@@ -675,7 +668,7 @@ const Home = () => {
 
   // Note: We're not wrapping in MainLayout, as that's done in App.jsx
   return (
-    <div className="bg-pattern min-h-screen pb-12">
+    <div className="min-h-screen pb-12">
       {/* Add custom styles */}
       <style>{customStyles}</style>
 
@@ -691,10 +684,11 @@ const Home = () => {
         {/* Top Bar with Profile */}
         <div className={`flex justify-between items-center mb-8 ${contentLoaded ? "animate-slide-up" : "opacity-0"}`}>
           <div>
-            <h1 className="text-3xl font-bold text-gradient">YOUR PERSONALIZE HEALTH APP!</h1>
+            <h1 className="text-3xl font-bold text-blue-800">Your Health Dashboard</h1>
+            <p className="text-blue-600 mt-1">Personalized care at your fingertips</p>
           </div>
 
-          <Link to="/profile" className="flex items-center gap-3 hover-lift p-2 rounded-full">
+          <Link to="/profile" className="flex items-center gap-3 hover:bg-blue-50 p-2 rounded-full transition-colors duration-300">
             {userData?.profileImage ? (
               <img
                 src={userData.profileImage || "/placeholder.svg"}
@@ -702,13 +696,13 @@ const Home = () => {
                 className="h-12 w-12 rounded-full object-cover border-2 border-white shadow-md"
               />
             ) : (
-              <div className="h-12 w-12 rounded-full gradient-primary flex items-center justify-center border-2 border-white shadow-md">
+              <div className="h-12 w-12 rounded-full bg-gradient-to-r from-blue-500 to-blue-700 flex items-center justify-center border-2 border-white shadow-md">
                 <span className="text-lg font-medium text-white">{userData?.name?.charAt(0) || "U"}</span>
               </div>
             )}
             <div className="hidden md:block">
-              <p className="font-medium">{userData?.name || "User"}</p>
-              <p className="text-sm text-gray-500">{userData?.email || "user@example.com"}</p>
+              <p className="font-medium text-gray-800">{userData?.name || "User"}</p>
+              <p className="text-sm text-blue-600">{userData?.email || "user@example.com"}</p>
             </div>
           </Link>
         </div>
@@ -816,7 +810,7 @@ const Home = () => {
           {/* Left Column - Main Content */}
           <div className="space-y-8">
             {/* Upcoming Appointments */}
-            <div className={`glass-card rounded-2xl p-6 ${contentLoaded ? "animate-slide-up stagger-2" : "opacity-0"}`}>
+            <div className={`glass-card rounded-2xl p-6 shadow-lg border border-blue-100 ${contentLoaded ? "animate-slide-up stagger-2" : "opacity-0"}`}>
               <div className="flex justify-between items-center mb-5">
                 <h2 className="text-xl font-bold text-gray-800">Upcoming Appointments</h2>
                 <Link to="/appointments" className="text-blue-600 hover:text-blue-800 text-sm font-medium">
@@ -833,14 +827,14 @@ const Home = () => {
               ) : upcomingAppointments && upcomingAppointments.length > 0 ? (
                 <div className="space-y-4">
                   {upcomingAppointments.map((appointment, index) => (
-                    <div key={appointment._id} className="gradient-border hover-lift bg-white p-4 rounded-xl">
+                    <div key={appointment._id} className="bg-white hover:bg-blue-50 p-4 rounded-xl border border-blue-100 shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
                       <div className="flex justify-between">
                         <div>
                           <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-md mb-2">
                             {formatAppointmentDate(appointment.date)}
                           </span>
-                          <h3 className="font-medium text-lg">{appointment.doctorName || "Dr. Unknown"}</h3>
-                          <p className="text-gray-500 text-sm">{appointment.specialization || "General Checkup"}</p>
+                          <h3 className="font-medium text-gray-800 text-lg">{appointment.doctorName || "Dr. Unknown"}</h3>
+                          <p className="text-blue-600 text-sm">{appointment.specialization || "General Checkup"}</p>
                         </div>
                         <div className="text-right">
                           <span className="text-gray-500 text-sm">{formatAppointmentTime(appointment.date)}</span>
@@ -876,7 +870,7 @@ const Home = () => {
             </div>
 
             {/* Health Articles */}
-            <div className={`glass-card rounded-2xl p-6 ${contentLoaded ? "animate-slide-up stagger-4" : "opacity-0"}`}>
+            <div className={`glass-card rounded-2xl p-6 shadow-lg border border-blue-100 ${contentLoaded ? "animate-slide-up stagger-4" : "opacity-0"}`}>
               <div className="flex justify-between items-center mb-5">
                 <h2 className="text-xl font-bold text-gray-800">Health Articles</h2>
                 <a
@@ -939,7 +933,7 @@ const Home = () => {
             </div>
 
             {/* Health Tips */}
-            <div className={`glass-card rounded-2xl p-6 ${contentLoaded ? "animate-slide-up stagger-5" : "opacity-0"}`}>
+            <div className={`glass-card rounded-2xl p-6 shadow-lg border border-blue-100 ${contentLoaded ? "animate-slide-up stagger-5" : "opacity-0"}`}>
               <div className="flex items-center mb-4">
                 <div className="h-12 w-12 rounded-full gradient-success flex items-center justify-center mr-4 flex-shrink-0">
                   <svg
@@ -965,7 +959,7 @@ const Home = () => {
           {/* Right Column - Sidebar */}
           <div className="space-y-8">
             {/* Medication Reminders */}
-            <div className={`glass-card rounded-2xl p-6 ${contentLoaded ? "animate-slide-up stagger-3" : "opacity-0"}`}>
+            <div className={`glass-card rounded-2xl p-6 shadow-lg border border-blue-100 ${contentLoaded ? "animate-slide-up stagger-3" : "opacity-0"}`}>
               <div className="flex justify-between items-center mb-5">
                 <h2 className="text-xl font-bold text-gray-800">Medication Reminders</h2>
                 <Link to="/prescriptions" className="text-blue-600 hover:text-blue-800 text-sm font-medium">
@@ -1020,7 +1014,7 @@ const Home = () => {
             </div>
 
             {/* Quick Access */}
-            <div className={`glass-card rounded-2xl p-6 ${contentLoaded ? "animate-slide-up stagger-4" : "opacity-0"}`}>
+            <div className={`glass-card rounded-2xl p-6 shadow-lg border border-blue-100 ${contentLoaded ? "animate-slide-up stagger-4" : "opacity-0"}`}>
               <h2 className="text-xl font-bold text-gray-800 mb-5">Quick Access</h2>
 
               <div className="grid grid-cols-1 gap-4">

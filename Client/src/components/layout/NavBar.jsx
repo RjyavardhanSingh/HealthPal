@@ -17,10 +17,17 @@ const customStyles = `
     to { opacity: 1; transform: translateY(0); }
   }
   
-  @keyframes pulse {
+  @keyframes heartbeat {
     0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
+    15% { transform: scale(1.15); }
+    30% { transform: scale(1); }
+    45% { transform: scale(1.15); }
+    60% { transform: scale(1); }
     100% { transform: scale(1); }
+  }
+  
+  .heartbeat {
+    animation: heartbeat 2s ease-in-out infinite;
   }
   
   /* Animation classes */
@@ -34,21 +41,27 @@ const customStyles = `
   
   /* Custom UI elements */
   .navbar-shadow {
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+    backdrop-filter: blur(8px);
+    background-color: rgba(255, 255, 255, 0.9) !important;
+    border-bottom: 1px solid rgba(219, 234, 254, 0.7);
   }
   
   .search-input {
     transition: all 0.2s ease;
+    border-color: rgba(147, 197, 253, 0.4) !important;
   }
   
   .search-input:focus {
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+    border-color: rgb(59, 130, 246) !important;
   }
   
   .nav-dropdown {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    border-radius: 0.5rem;
-    border: 1px solid rgba(0, 0, 0, 0.05);
+    box-shadow: 0 8px 16px rgba(59, 130, 246, 0.1);
+    border-radius: 0.75rem;
+    border: 1px solid rgba(219, 234, 254, 0.7);
+    overflow: hidden;
   }
   
   .nav-dropdown-item {
@@ -56,7 +69,7 @@ const customStyles = `
   }
   
   .nav-dropdown-item:hover {
-    background-color: #f3f4f6;
+    background-color: #EFF6FF;
   }
   
   .mobile-nav-item {
@@ -64,15 +77,15 @@ const customStyles = `
   }
   
   .mobile-nav-item:hover {
-    color: #3b82f6;
+    color: #2563EB;
   }
   
   .mobile-nav-item.active {
-    color: #3b82f6;
+    color: #2563EB;
   }
   
   .mobile-nav-item.active svg {
-    color: #3b82f6;
+    color: #2563EB;
   }
   
   .logo-text {
@@ -81,6 +94,7 @@ const customStyles = `
     -webkit-text-fill-color: transparent;
     background-clip: text;
     text-fill-color: transparent;
+    font-weight: 700;
   }
   
   .notification-badge {
@@ -92,15 +106,21 @@ const customStyles = `
     background-color: #ef4444;
     border-radius: 50%;
     border: 2px solid white;
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
   }
   
   .burger-button {
     transition: all 0.2s ease;
+    position: relative;
+    margin: 0;
+    padding: 1rem 1rem 1rem 0.75rem;
+    border-top-right-radius: 9999px;
+    border-bottom-right-radius: 9999px;
   }
   
   .burger-button:hover {
-    background-color: #f3f4f6;
-    color: #3b82f6;
+    background-color: rgba(219, 234, 254, 0.4);
+    color: #2563eb;
   }
   
   .profile-button {
@@ -109,7 +129,8 @@ const customStyles = `
   }
   
   .profile-button:hover {
-    border-color: #e5e7eb;
+    border-color: rgba(219, 234, 254, 0.7);
+    box-shadow: 0 2px 6px rgba(59, 130, 246, 0.15);
   }
   
   .profile-button:focus {
@@ -118,6 +139,27 @@ const customStyles = `
   
   .avatar-gradient {
     background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  }
+  
+  .mobile-nav {
+    box-shadow: 0 -4px 12px rgba(59, 130, 246, 0.1);
+    border-top: 1px solid rgba(219, 234, 254, 0.7);
+  }
+  
+  .health-pattern {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E%3Cpath d='M30 30 L30 20 L20 20 L20 30 L10 30 L10 40 L20 40 L20 50 L30 50 L30 40 L40 40 L40 30 z' fill='%233b82f610'/%3E%3C/svg%3E");
+    background-size: 60px 60px;
+  }
+
+  /* New class for the burger button container */
+  .burger-container {
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 64px; /* matches the h-16 class */
+    display: flex;
+    align-items: center;
+    z-index: 50;
   }
 `
 
@@ -193,30 +235,38 @@ const NavBar = ({ toggleSidebar }) => {
       <style>{customStyles}</style>
 
       {/* Desktop top navigation */}
-      <nav className="bg-white navbar-shadow fixed top-0 inset-x-0 z-40">
-        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
-          <div className="flex h-16 items-center">
-            {/* Burger Menu Button */}
-            <button
-              type="button"
-              onClick={toggleSidebar}
-              className="burger-button p-3 rounded-full text-gray-500 hover:text-blue-600 focus:outline-none"
-              aria-expanded="false"
-            >
-              <span className="sr-only">Toggle sidebar</span>
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
+      <nav className="bg-white/90 navbar-shadow fixed top-0 inset-x-0 z-40">
+        {/* Burger Menu Button - Fixed at extreme left edge */}
+        <div className="burger-container">
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            className="burger-button flex items-center justify-center text-blue-600 hover:text-blue-700 focus:outline-none"
+            aria-expanded="false"
+          >
+            <span className="sr-only">Toggle sidebar</span>
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        </div>
 
-            {/* Logo */}
-            <div className="flex-shrink-0 flex items-center ml-2">
-              <Link to="/" className="text-2xl font-bold logo-text">
-                HealthPal
+        <div className="max-w-7xl mx-auto px-4 lg:px-6">
+          <div className="flex h-16 items-center">
+            {/* Logo - With proper margin to avoid overlap with burger button */}
+            <div className="flex-shrink-0 flex items-center ml-10">
+              <Link to="/" className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center heartbeat">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                  </svg>
+                </div>
+                <span className="text-xl font-bold logo-text">HealthPal</span>
               </Link>
             </div>
 
-            {/* Search Bar - Center aligned */}
+            {/* Rest of the navbar content remains the same */}
+            {/* Search Bar */}
             <div className="hidden md:flex flex-1 justify-center px-2 lg:px-0">
               <div className="w-full max-w-lg">
                 <form onSubmit={handleSearchSubmit}>
@@ -225,7 +275,7 @@ const NavBar = ({ toggleSidebar }) => {
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="h-5 w-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path
                           strokeLinecap="round"
                           strokeLinejoin="round"
@@ -239,7 +289,7 @@ const NavBar = ({ toggleSidebar }) => {
                       name="search"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="search-input block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      className="search-input block w-full pl-10 pr-3 py-2 border border-blue-200 rounded-lg text-sm placeholder-blue-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                       placeholder="Search for doctors, services, etc."
                       type="search"
                     />
@@ -253,7 +303,7 @@ const NavBar = ({ toggleSidebar }) => {
               {/* Notification bell */}
               <Link
                 to="/notifications"
-                className="relative p-2 rounded-full text-gray-500 hover:text-blue-600 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="relative p-2 rounded-full text-blue-600 hover:text-blue-700 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-300"
               >
                 <span className="sr-only">View notifications</span>
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -276,7 +326,7 @@ const NavBar = ({ toggleSidebar }) => {
                   >
                     {currentUser.photoURL ? (
                       <img
-                        className="h-9 w-9 rounded-full object-cover border-2 border-white shadow-sm"
+                        className="h-9 w-9 rounded-full object-cover border-2 border-white shadow-md"
                         src={currentUser.photoURL || "/placeholder.svg"}
                         alt={currentUser.displayName || "User"}
                       />
@@ -335,11 +385,11 @@ const NavBar = ({ toggleSidebar }) => {
       </nav>
 
       {/* Mobile search bar - shown on mobile only */}
-      <div className="md:hidden fixed top-16 inset-x-0 z-40 px-4 py-2 bg-white border-b shadow-sm">
+      <div className="md:hidden fixed top-16 inset-x-0 z-40 px-2 py-2 bg-white/90 border-b border-blue-100 shadow-sm backdrop-blur-md">
         <form onSubmit={handleSearchSubmit}>
           <div className="relative rounded-md">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="h-5 w-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -352,7 +402,7 @@ const NavBar = ({ toggleSidebar }) => {
               type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="search-input block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="search-input block w-full pl-10 pr-3 py-2 border border-blue-200 rounded-lg text-sm placeholder-blue-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               placeholder="Search for doctors, services..."
             />
           </div>
@@ -360,7 +410,7 @@ const NavBar = ({ toggleSidebar }) => {
       </div>
 
       {/* Mobile bottom navigation */}
-      <div className="fixed inset-x-0 bottom-0 z-50 bg-white border-t border-gray-200 navbar-shadow md:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-50 bg-white/95 mobile-nav backdrop-blur-md md:hidden">
         <div className="grid grid-cols-5 h-16">
           <NavLink to="/home" className={mobileNavLinkClass}>
             <svg
@@ -377,7 +427,7 @@ const NavBar = ({ toggleSidebar }) => {
                 d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
               />
             </svg>
-            <span className="text-xs mt-1">Home</span>
+            <span className="text-xs mt-1 font-medium">Home</span>
           </NavLink>
 
           <NavLink to="/find-doctor" className={mobileNavLinkClass}>
@@ -395,7 +445,7 @@ const NavBar = ({ toggleSidebar }) => {
                 d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
               />
             </svg>
-            <span className="text-xs mt-1">Doctors</span>
+            <span className="text-xs mt-1 font-medium">Doctors</span>
           </NavLink>
 
           <NavLink to="/appointments" className={mobileNavLinkClass}>
@@ -413,7 +463,7 @@ const NavBar = ({ toggleSidebar }) => {
                 d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
               />
             </svg>
-            <span className="text-xs mt-1">Appts</span>
+            <span className="text-xs mt-1 font-medium">Appts</span>
           </NavLink>
 
           <NavLink to="/notifications" className={mobileNavLinkClass}>
@@ -434,7 +484,7 @@ const NavBar = ({ toggleSidebar }) => {
               </svg>
               <span className="notification-badge"></span>
             </div>
-            <span className="text-xs mt-1">Alerts</span>
+            <span className="text-xs mt-1 font-medium">Alerts</span>
           </NavLink>
 
           <NavLink to="/profile" className={mobileNavLinkClass}>
@@ -452,7 +502,7 @@ const NavBar = ({ toggleSidebar }) => {
                 d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
               />
             </svg>
-            <span className="text-xs mt-1">Profile</span>
+            <span className="text-xs mt-1 font-medium">Profile</span>
           </NavLink>
         </div>
       </div>
