@@ -40,6 +40,9 @@ import DoctorSettings from './pages/Settings';
 import ConsultationDetails from './pages/doctor/ConsultationDetails';
 import DoctorPrescriptions from './pages/doctor/DoctorPrescriptions';
 import DoctorPrescriptionDetails from './pages/doctor/DoctorPrescriptionDetails';
+import VerificationStatus from './pages/doctor/VerificationStatus';
+import AdminLayout from './components/layout/AdminLayout';
+import DoctorVerification from './pages/admin/DoctorVerification';
 
 const App = () => {
   const [validatingToken, setValidatingToken] = useState(true);
@@ -168,7 +171,9 @@ const AppContent = () => {
           isAuthenticated ? (
             currentUser?.role === 'doctor' ? 
               <Navigate to="/doctor/dashboard" replace /> : 
-              <Navigate to="/home" replace />
+              currentUser?.role === 'admin' ?
+                <Navigate to="/admin/doctor-verification" replace /> :
+                <Navigate to="/home" replace />
           ) : (
             <Navigate to="/landing" replace />
           )
@@ -258,6 +263,7 @@ const AppContent = () => {
         <Route path="patients/:id" element={<PatientDetails />} />
         <Route path="consultations/:id" element={<ConsultationDetails />} />
         <Route path="availability" element={<AvailabilityManagement />} />
+        <Route path="verification-pending" element={<VerificationStatus />} />
         
         {/* Add these new prescription routes */}
         <Route path="prescriptions" element={<DoctorPrescriptions />} />
@@ -270,6 +276,17 @@ const AppContent = () => {
         {/* Video consultation routes */}
         <Route path="video-preparation/:appointmentId" element={<VideoPreparation userType="doctor" />} />
         <Route path="video-consultation/:appointmentId" element={<VideoConsultation userType="doctor" />} />
+      </Route>
+
+      {/* Admin routes with AdminLayout */}
+      <Route path="/admin" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminLayout />
+        </ProtectedRoute>
+      }>
+        <Route index element={<Navigate to="/admin/doctor-verification" replace />} />
+        <Route path="doctor-verification" element={<DoctorVerification />} />
+        {/* Add other admin routes as needed */}
       </Route>
 
       {/* Fallback route */}

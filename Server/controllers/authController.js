@@ -3,6 +3,7 @@ const Patient = require('../models/Patient');
 const Doctor = require('../models/Doctor');
 const jwt = require('jsonwebtoken');
 const admin = require('../config/firebase-admin');
+const bcrypt = require('bcryptjs');
 
 // Generate JWT token
 const generateToken = (id) => {
@@ -39,7 +40,7 @@ exports.register = async (req, res) => {
         role
       });
     } else if (role === 'doctor') {
-      // For doctors, additional information may be required
+      // For doctors, additional information is required
       const { specialization, licenseNumber, consultationFee } = req.body;
       
       if (!specialization || !licenseNumber || !consultationFee) {
@@ -49,6 +50,7 @@ exports.register = async (req, res) => {
         });
       }
       
+      // Create doctor with pending verification status
       user = await Doctor.create({
         name,
         email,
@@ -59,8 +61,32 @@ exports.register = async (req, res) => {
         role,
         specialization,
         licenseNumber,
-        consultationFee
+        consultationFee,
+        verificationStatus: 'pending' // Set initial status as pending
       });
+      
+      // Create verification request
+      const VerificationRequest = require('../models/VerificationRequest');
+      await VerificationRequest.create({
+        doctor: user._id,
+        status: 'pending',
+        adminNotes: `Initial verification request. License Number: ${licenseNumber}`
+      });
+      
+      // Send notification to admins about new doctor registration
+      try {
+        const notificationController = require('./notificationController');
+        await notificationController.sendNotificationToAdmins(
+          'New Doctor Registration',
+          `Dr. ${name} has registered and is awaiting verification. License: ${licenseNumber}`,
+          {
+            type: 'doctor_verification',
+            doctorId: user._id.toString()
+          }
+        );
+      } catch (notifError) {
+        console.error('Error sending admin notification:', notifError);
+      }
     } else {
       // Default to patient if invalid role
       user = await Patient.create({
@@ -748,6 +774,55 @@ exports.googleAuth = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: error.message || 'An unexpected error occurred'
+    });
+  }
+};
+
+// Add this new controller method
+
+// Admin login endpoint - fix the implementation
+exports.adminLogin = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    // Always prioritize environment variable admin
+    if (email === process.env.ADMIN_EMAIL && password === process.env.ADMIN_PASSWORD) {
+      // Find or create the admin
+      let admin = await Person.findOne({ email: process.env.ADMIN_EMAIL, role: 'admin' });
+      
+      if (!admin) {
+        admin = await Person.create({
+          name: 'System Admin',
+          email: process.env.ADMIN_EMAIL,
+          password: process.env.ADMIN_PASSWORD, // Store password as plain text
+          role: 'admin',
+          isActive: true
+        });
+      }
+      
+      const token = generateToken(admin._id);
+      
+      return res.status(200).json({
+        success: true,
+        token,
+        user: {
+          id: admin._id,
+          name: admin.name || 'System Admin',
+          email: admin.email,
+          role: 'admin'
+        }
+      });
+    }
+    
+    return res.status(401).json({
+      success: false,
+      message: 'Invalid admin credentials'
+    });
+  } catch (error) {
+    console.error('Admin login error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error during admin authentication'
     });
   }
 };

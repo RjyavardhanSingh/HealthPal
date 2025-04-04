@@ -30,6 +30,8 @@ const fileRoutes = require('./routes/fileRoutes');
 const medicationRoutes = require('./routes/medicationRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const notificationController = require('./controllers/notificationController');
+const verificationRoutes = require('./routes/verificationRoutes');
+const paymentRoutes = require('./routes/paymentRoutes')
 
 // Middleware
 app.use(express.json());
@@ -78,6 +80,9 @@ app.use('/api/reminders', reminderRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/medications', medicationRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/verification', verificationRoutes);
+app.use('/api', verificationRoutes);
+app.use('/api/payments', paymentRoutes)
 
 // Socket.io connection handler
 io.on('connection', (socket) => {

@@ -19,7 +19,14 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   }
 
   if (allowedRoles.length > 0 && !allowedRoles.includes(currentUser?.role)) {
-    return <Navigate to="/" replace />;
+    // Redirect based on role
+    if (currentUser.role === 'admin') {
+      return <Navigate to="/admin/doctor-verification" replace />;
+    } else if (currentUser.role === 'doctor') {
+      return <Navigate to="/doctor/dashboard" replace />;
+    } else {
+      return <Navigate to="/home" replace />;
+    }
   }
 
   return children;

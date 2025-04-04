@@ -38,6 +38,7 @@ const VideoConsultation = () => {
   const chatContainerRef = useRef(null);
   const localVideoRef = useRef(null);
   const mediaStreamRef = useRef(null);
+  const remoteVideoRef = useRef(null);
   
   useEffect(() => {
     let isMounted = true;
@@ -46,52 +47,98 @@ const VideoConsultation = () => {
     const fetchAppointment = async () => {
       try {
         setLoading(true);
+        setError(null);
         
-        if (!id) {
-          console.error('No appointment ID provided');
-          setError('No appointment ID provided. Please return to your appointments and try again.');
-          setLoading(false);
-          return;
-        }
+        console.log('Fetching appointment details for video call, ID:', id);
         
-        console.log('Fetching appointment with ID:', id);
-        const response = await api.appointments.getById(id);
+        // First fetch the appointment details
+        const appointmentResponse = await api.appointments.getById(id);
+        setAppointment(appointmentResponse.data.data);
         
-        if (!isMounted) return;
+        // Initialize Agora service
+        const agoraService = await import('../services/agoraService').then(m => m.default);
         
-        console.log('Appointment data:', response.data);
-        setAppointment(response.data.data);
-        
-        // Connect to socket and join consultation room
-        socketService.connect();
-        socketService.joinConsultation(id);
-        
-        // Initialize camera and microphone
-        initializeMedia();
-        
-        setTimeout(() => {
-          if (isMounted) {
-            setConnected(true);
-            setConsultationStarted(true);
+        try {
+          // Add error handling around token request
+          const tokenResponse = await api.video.getToken(id);
+          console.log('Video token received:', tokenResponse.data);
+          
+          if (tokenResponse?.data?.token) {
+            const { token, channelName } = tokenResponse.data;
             
-            const systemMessage = { 
-              sender: 'system', 
-              text: `${currentUser.role === 'doctor' ? 'Patient' : 'Doctor'} has joined the consultation`,
-              id: 'system-' + Date.now()
-            };
-            
-            setMessages([systemMessage]);
+            // Join the channel with the token
+            await agoraService.joinChannel(
+              channelName, 
+              token, 
+              null,
+              // Rest of the join channel parameters
+            );
+          } else {
+            // Fallback for missing token data
+            console.log('Creating temporary channel without token');
+            const channelName = `appointment-${id}`;
+            await agoraService.joinChannel(
+              channelName, 
+              null, 
+              null,
+              // Rest of the join channel parameters
+            );
           }
-        }, 2000);
+          
+          // Set up local video stream
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+          mediaStreamRef.current = stream;
+          setLocalStream(stream);
+          
+          if (localVideoRef.current) {
+            localVideoRef.current.srcObject = stream;
+          }
+          
+          setConnected(true);
+        } catch (tokenError) {
+          console.error('Token error:', tokenError);
+          // Continue without token in development mode
+          if (process.env.NODE_ENV === 'development') {
+            const channelName = `appointment-${id}`;
+            try {
+              await agoraService.joinChannel(
+                channelName, 
+                null, 
+                null,
+                (user) => {
+                  console.log('Remote user joined with video', user);
+                  if (user.videoTrack) {
+                    user.videoTrack.play(remoteVideoRef.current);
+                  }
+                },
+                (user) => {
+                  console.log('Remote user left', user);
+                }
+              );
+              
+              // Set up local video stream
+              const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+              mediaStreamRef.current = stream;
+              setLocalStream(stream);
+              
+              if (localVideoRef.current) {
+                localVideoRef.current.srcObject = stream;
+              }
+              
+              setConnected(true);
+            } catch (fallbackError) {
+              console.error('Fallback error:', fallbackError);
+              throw new Error(`Failed to join call: ${fallbackError.message}`);
+            }
+          } else {
+            throw tokenError;
+          }
+        }
       } catch (err) {
         console.error('Error fetching appointment:', err);
-        if (isMounted) {
-          setError('Failed to load appointment details. ' + (err.response?.data?.message || err.message));
-        }
+        setError(`Failed to initialize video call: ${err.message}`);
       } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+        setLoading(false);
       }
     };
 
@@ -116,15 +163,26 @@ const VideoConsultation = () => {
 
     fetchAppointment();
     
+    // Improved cleanup function
     return () => {
       isMounted = false;
       if (removeListener) removeListener();
+      
+      // Clean up socket connection
       socketService.disconnect();
       
       // Clean up media streams
       if (mediaStreamRef.current) {
         mediaStreamRef.current.getTracks().forEach(track => track.stop());
       }
+      
+      // Import and use agoraService to properly leave the channel
+      import('../services/agoraService').then(module => {
+        const agoraService = module.default;
+        agoraService.leaveChannel().catch(err => {
+          console.error('Error leaving Agora channel during cleanup:', err);
+        });
+      });
     };
   }, [id, currentUser.role]);
 
@@ -237,9 +295,11 @@ const VideoConsultation = () => {
       
       socketService.sendMessage(id, systemMessage);
       
-      if (currentUser.role === 'doctor' || !showReviewDialog) {
-        navigate(`/appointments/${id}`);
-      }
+      const appointmentPath = currentUser.role === 'doctor' 
+        ? `/doctor/appointments/${id}` 
+        : `/appointments/${id}`;
+
+      navigate(appointmentPath);
     } catch (err) {
       console.error('Error ending consultation:', err);
       toast.error('Failed to end consultation');
@@ -249,7 +309,13 @@ const VideoConsultation = () => {
   // Review dialog closing handler
   const handleReviewClose = (reviewed) => {
     setShowReviewDialog(false);
-    navigate(`/appointments/${id}`);
+    
+    // Use role-based path
+    const appointmentPath = currentUser.role === 'doctor' 
+      ? `/doctor/appointments/${id}` 
+      : `/appointments/${id}`;
+    
+    navigate(appointmentPath);
     
     if (reviewed) {
       toast.success('Thank you for your feedback!');
@@ -309,22 +375,16 @@ const VideoConsultation = () => {
           {/* Video area */}
           <div className="md:col-span-2">
             <div className="aspect-video bg-gray-800 rounded-lg mb-4 relative overflow-hidden">
-              {localStream ? (
-                <video
-                  ref={localVideoRef}
-                  autoPlay
-                  muted
-                  playsInline
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="text-gray-400 text-center flex flex-col items-center justify-center h-full">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-20 w-20 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                  <p className="text-lg">Connecting to camera...</p>
-                </div>
-              )}
+              <div ref={remoteVideoRef} className="w-full h-full">
+                {!connected && (
+                  <div className="text-gray-400 text-center flex flex-col items-center justify-center h-full">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-20 w-20 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    <p className="text-lg">Waiting for other participant...</p>
+                  </div>
+                )}
+              </div>
               
               {/* Picture-in-picture miniature of local view */}
               {localStream && (

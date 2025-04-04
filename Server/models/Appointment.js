@@ -46,6 +46,18 @@ const appointmentSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'MedicalRecord'
   }],
+  isPaid: {
+    type: Boolean,
+    default: false
+  },
+  paymentId: {
+    type: String
+  },
+  paymentStatus: {
+    type: String,
+    enum: ['pending', 'completed', 'failed', 'refunded'],
+    default: 'pending'
+  },
   createdAt: {
     type: Date,
     default: Date.now

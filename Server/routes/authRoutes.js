@@ -11,6 +11,8 @@ const jwt = require('jsonwebtoken');
 // Public routes
 router.post('/register', authController.register);
 router.post('/register-google', authController.registerGoogle);
+// Make sure this route is BEFORE the protect middleware
+router.post('/admin-login', authController.adminLogin);
 
 // Fix the email/password login route
 router.post('/login', async (req, res) => {
@@ -186,7 +188,10 @@ router.post('/google', async (req, res) => {
   }
 });
 
-// Protected routes
+// Add or verify this line BEFORE the protect middleware
+router.post('/admin-login', authController.adminLogin);
+
+// Protected routes should be after this
 router.use(protect);
 router.get('/me', authController.getMe);
 router.get('/verify', authController.verifyToken);

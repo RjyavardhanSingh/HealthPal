@@ -666,6 +666,12 @@ const Home = () => {
     })
   }
 
+  useEffect(() => {
+    if (auth.currentUser && currentUser?.role === 'admin') {
+      navigate('/admin/doctor-verification');
+    }
+  }, [currentUser, navigate]);
+
   // Note: We're not wrapping in MainLayout, as that's done in App.jsx
   return (
     <div className="min-h-screen pb-12">

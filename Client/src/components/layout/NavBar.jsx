@@ -359,6 +359,15 @@ const NavBar = ({ toggleSidebar }) => {
                         >
                           Settings
                         </Link>
+                        {currentUser && currentUser.role === 'admin' && (
+                          <Link
+                            to="/admin/doctor-verification"
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            onClick={() => setIsMenuOpen(false)}
+                          >
+                            Admin Dashboard
+                          </Link>
+                        )}
                         <button
                           onClick={handleLogout}
                           className="nav-dropdown-item block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
@@ -506,6 +515,37 @@ const NavBar = ({ toggleSidebar }) => {
           </NavLink>
         </div>
       </div>
+
+      {/* Admin Links */}
+      {currentUser && currentUser.role === 'admin' && (
+        <div className="px-2 space-y-1">
+          <Link
+            to="/admin/doctor-verification"
+            className={`${
+              location.pathname.includes('/admin/doctor-verification')
+                ? 'bg-primary-800 text-white'
+                : 'text-primary-100 hover:bg-primary-700'
+            } group flex items-center px-2 py-2 text-sm font-medium rounded-md`}
+          >
+            <svg
+              className="mr-3 h-6 w-6 text-primary-300"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+              />
+            </svg>
+            Doctor Verification
+          </Link>
+          {/* Add other admin links here */}
+        </div>
+      )}
     </>
   )
 }

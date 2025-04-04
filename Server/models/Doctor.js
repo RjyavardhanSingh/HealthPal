@@ -21,7 +21,7 @@ const doctorSchema = new mongoose.Schema({
   },
   consultationFee: {
     type: Number,
-    required: true
+    default: 50
   },
   availability: [{
     day: {
@@ -76,7 +76,24 @@ const doctorSchema = new mongoose.Schema({
   isAcceptingAppointments: {
     type: Boolean,
     default: true
-  }
+  },
+  verificationStatus: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'pending'
+  },
+  rejectionReason: {
+    type: String
+  },
+  verificationDocuments: [{
+    title: String,
+    description: String,
+    fileUrl: String,
+    uploadDate: {
+      type: Date,
+      default: Date.now
+    }
+  }]
 });
 
 const Doctor = Person.discriminator('Doctor', doctorSchema);

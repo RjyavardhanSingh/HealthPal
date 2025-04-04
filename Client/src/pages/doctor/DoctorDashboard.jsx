@@ -322,30 +322,103 @@ const DoctorDashboard = () => {
   }
 
   const formatAppointmentTime = (date, timeStart) => {
-    if (!date || !timeStart) return "N/A"
-
+    if (!date || !timeStart) return "N/A";
+    
     try {
-      const appointmentDate = new Date(date + "T" + timeStart)
-      return appointmentDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      // Make sure we have a valid date and time format
+      if (typeof date !== 'string' || !date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        return timeStart;
+      }
+      
+      // Use a more reliable way to create the date object
+      const [hours, minutes] = timeStart.split(':');
+      const appointmentDate = new Date(date);
+      appointmentDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+      
+      // Check if the date is valid
+      if (isNaN(appointmentDate.getTime())) {
+        return timeStart;
+      }
+      
+      return appointmentDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     } catch (error) {
-      return timeStart || "N/A"
+      console.log("Error formatting time:", error);
+      return timeStart || "N/A";
     }
-  }
-
+  };
+  
   const formatAppointmentDate = (date) => {
-    if (!date) return "N/A"
-
+    if (!date) return "N/A";
+    
     try {
-      const appointmentDate = new Date(date)
+      // For date strings, ensure proper format
+      if (typeof date === 'string' && date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const [year, month, day] = date.split('-').map(num => parseInt(num, 10));
+        const appointmentDate = new Date(year, month - 1, day); // month is 0-indexed in JS
+        
+        if (isNaN(appointmentDate.getTime())) {
+          return date;
+        }
+        
+        return appointmentDate.toLocaleDateString([], {
+          weekday: "short",
+          month: "short",
+          day: "numeric"
+        });
+      }
+      
+      // For date objects
+      const appointmentDate = new Date(date);
+      if (isNaN(appointmentDate.getTime())) {
+        return date;
+      }
+      
       return appointmentDate.toLocaleDateString([], {
         weekday: "short",
         month: "short",
-        day: "numeric",
-      })
+        day: "numeric"
+      });
     } catch (error) {
-      return date
+      console.log("Error formatting date:", error);
+      return date;
     }
-  }
+  };
+  
+  const getTimeFromNow = (dateString) => {
+    if (!dateString) return "";
+    
+    try {
+      const date = new Date(dateString);
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        return "recently";
+      }
+      
+      const now = new Date();
+      const diffTime = Math.abs(now - date);
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (diffDays === 0) {
+        return "today";
+      } else if (diffDays === 1) {
+        return "yesterday";
+      } else if (diffDays < 7) {
+        return `${diffDays} days ago`;
+      } else if (diffDays < 30) {
+        const weeks = Math.floor(diffDays / 7);
+        return `${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
+      } else {
+        return date.toLocaleDateString([], {
+          month: "short",
+          day: "numeric"
+        });
+      }
+    } catch (error) {
+      console.log("Error calculating time from now:", error);
+      return "recently";
+    }
+  };
 
   const getStatusClass = (status) => {
     switch (status) {
@@ -356,19 +429,6 @@ const DoctorDashboard = () => {
       default:
         return "status-pending"
     }
-  }
-
-  const getTimeFromNow = (dateString) => {
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffTime = Math.abs(now - date)
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
-
-    if (diffDays === 0) return "Today"
-    if (diffDays === 1) return "Yesterday"
-    if (diffDays < 7) return `${diffDays} days ago`
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`
-    return `${Math.floor(diffDays / 30)} months ago`
   }
 
   if (loading) {
@@ -618,7 +678,7 @@ const DoctorDashboard = () => {
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         strokeWidth={1.5}
-                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0z"
                       />
                     </svg>
                   </div>

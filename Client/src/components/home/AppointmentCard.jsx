@@ -35,27 +35,9 @@ const AppointmentCard = ({ appointment }) => {
     currentTime: currentDate.toISOString(),
     timeDiffMinutes: Math.abs((appointmentDate - currentDate) / (1000 * 60))
   });
-  
-  // Allow joining 30 minutes before or after the appointment time
-  // Force the join button to show for testing by setting this to true
-  const timeDiffMinutes = Math.abs((appointmentDate - currentDate) / (1000 * 60));
-  const isWithinTimeWindow = timeDiffMinutes < 30;
-  // Debug what's happening (temporarily)
-  console.log({
-    appointment: appointment._id,
-    type: appointment.type,
-    isVideoAppointment, 
-    status: appointment.status,
-    isScheduled, 
-    timeDiffMinutes,
-    isWithinTimeWindow
-  });
-  // Force the button to show regardless of time window for testing
-  const canJoinVideoCall = isVideoAppointment && isScheduled; // Remove time window restriction for testing
 
-  // And confirm the canJoinVideoCall check is working:
-  console.log('Appointment type:', appointment.type);
-  console.log('Is video appointment?', isVideoAppointment);
+  // Always show join button for video appointments that are scheduled
+  const canJoinVideoCall = isVideoAppointment && isScheduled;
 
   const handleJoinVideo = (e) => {
     e.preventDefault();

@@ -264,12 +264,7 @@ const VideoPreparation = ({ userType }) => {
 
               <button
                 onClick={handleJoinCall}
-                disabled={countdown !== null && countdown > 300} // Allow joining within 5 minutes of appointment
-                className={`px-6 py-3 rounded-md shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                  countdown !== null && countdown > 300
-                    ? 'bg-gray-400 cursor-not-allowed'
-                    : 'bg-primary-600 hover:bg-primary-700 focus:ring-primary-500'
-                }`}
+                className="px-6 py-3 rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
               >
                 Join Video Consultation
               </button>

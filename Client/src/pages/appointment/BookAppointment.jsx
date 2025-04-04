@@ -7,6 +7,8 @@ import { useAuth } from '../../context/AuthContext';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { toast } from 'react-toastify';
 import MedicalRecordSelector from '../../components/medical-record/MedicalRecordSelector';
+import StripeProvider from '../../components/payment/StripeProvider';
+import PaymentForm from '../../components/payment/PaymentForm';
 
 const BookAppointment = () => {
   const { doctorId } = useParams();
@@ -25,6 +27,9 @@ const BookAppointment = () => {
   const [error, setError] = useState(null);
   const [bookingInProgress, setBookingInProgress] = useState(false);
   const [selectedRecords, setSelectedRecords] = useState([]);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [pendingAppointmentId, setPendingAppointmentId] = useState(null);
+  const [appointmentFee, setAppointmentFee] = useState(0);
 
   // Block doctors from booking appointments
   useEffect(() => {
@@ -135,14 +140,32 @@ const BookAppointment = () => {
         attachedRecords: selectedRecords.map(record => record._id),
       };
 
+      // Create appointment but mark as unpaid
       const response = await api.appointments.create(appointmentData);
-      toast.success('Appointment booked successfully');
-      navigate(`/appointments/${response.data.data._id}`);
+      
+      // Set up payment
+      setPendingAppointmentId(response.data.data._id);
+      // Convert to cents for Stripe
+      setAppointmentFee(doctor.consultationFee * 100);
+      setShowPaymentModal(true);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to book appointment');
-    } finally {
       setBookingInProgress(false);
     }
+  };
+
+  const handlePaymentSuccess = () => {
+    setShowPaymentModal(false);
+    toast.success('Appointment booked and payment completed successfully');
+    navigate(`/appointments/${pendingAppointmentId}`);
+    setBookingInProgress(false);
+  };
+
+  const handlePaymentCancel = () => {
+    setShowPaymentModal(false);
+    toast.warning('Appointment created but payment not completed');
+    navigate(`/appointments/${pendingAppointmentId}`);
+    setBookingInProgress(false);
   };
 
   // Improved isDateAvailable function to handle date comparison correctly
@@ -391,6 +414,26 @@ const BookAppointment = () => {
           </div>
         </div>
       </div>
+
+      {showPaymentModal && pendingAppointmentId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+            <h2 className="text-xl font-medium mb-4">Complete Payment</h2>
+            <p className="mb-4 text-gray-600">
+              Please complete the payment to confirm your appointment with Dr. {doctor.name}.
+            </p>
+            
+            <StripeProvider>
+              <PaymentForm
+                appointmentId={pendingAppointmentId}
+                amount={appointmentFee}
+                onSuccess={handlePaymentSuccess}
+                onCancel={handlePaymentCancel}
+              />
+            </StripeProvider>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -112,19 +112,12 @@ const AppointmentList = () => {
     return `${hour12}:${minutes.toString().padStart(2, '0')} ${ampm}`;
   };
 
-  // Check if an appointment is upcoming and within 30 minutes
+  // Update the isAppointmentSoon function
+
+  // Modify this function to always return true for video appointments
   const isAppointmentSoon = (appointment) => {
-    if (appointment.status !== 'scheduled' || appointment.type !== 'video') return false;
-    
-    const appointmentTime = new Date(appointment.date);
-    if (appointment.time && appointment.time.start) {
-      const [hours, minutes] = appointment.time.start.split(':').map(Number);
-      appointmentTime.setHours(hours, minutes, 0, 0);
-    }
-    
-    const currentTime = new Date();
-    const diffMinutes = Math.abs((appointmentTime - currentTime) / (1000 * 60));
-    return diffMinutes < 30;
+    // Always show join button for video appointments
+    return appointment.type === 'video' && appointment.status === 'scheduled';
   };
 
   if (loading) {
@@ -253,8 +246,10 @@ const AppointmentList = () => {
                           </div>
                         )}
                         <div>
-                          <h3 className="font-medium text-gray-800">Dr. {appointment.doctor?.name || 'Unknown'}</h3>
-                          <p className="text-blue-600 text-sm">{appointment.doctor?.specialization || 'Medical Doctor'}</p>
+                          <h3 className="font-medium text-gray-800">
+                            {appointment.doctor?.name ? `Dr. ${appointment.doctor.name}` : 'Your Healthcare Provider'}
+                          </h3>
+                          <p className="text-blue-600 text-sm">{appointment.doctor?.specialization || 'Medical Professional'}</p>
                           <div className="flex items-center mt-1">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />

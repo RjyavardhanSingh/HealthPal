@@ -77,7 +77,7 @@ const AppointmentDetails = () => {
   const timeDifference = appointmentTime ? (appointmentTime - currentTime) / (1000 * 60) : null;
   const isWithinTimeWindow = timeDifference !== null && Math.abs(timeDifference) < 30; // 30 min window
 
-  const canJoinConsultation = isVideoAppointment && isScheduled && isWithinTimeWindow;
+  const canJoinConsultation = isVideoAppointment && isScheduled;
 
   // Custom styles to match landing page aesthetics
   const customStyles = `
@@ -221,6 +221,15 @@ const AppointmentDetails = () => {
                 }`}>
                   {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
                 </span>
+                <div className="mt-2">
+                  <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${
+                    appointment.isPaid 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {appointment.isPaid ? 'Paid' : 'Payment Pending'}
+                  </span>
+                </div>
               </div>
             </div>
             
@@ -245,7 +254,9 @@ const AppointmentDetails = () => {
                     </div>
                   )}
                   <div>
-                    <h3 className="font-medium text-lg text-gray-800">Dr. {appointment.doctor?.name || 'Unknown'}</h3>
+                    <h3 className="font-medium text-lg text-gray-800">
+                      {appointment.doctor?.name ? `Dr. ${appointment.doctor.name}` : 'Your Healthcare Provider'}
+                    </h3>
                     <p className="text-blue-600 text-sm">{appointment.doctor?.specialization || 'Healthcare Professional'}</p>
                   </div>
                 </div>

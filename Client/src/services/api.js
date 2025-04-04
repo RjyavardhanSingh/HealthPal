@@ -331,6 +331,38 @@ const api = {
       instance.put('/auth/password', { currentPassword, newPassword }),
     updateNotificationSettings: (settings) => 
       instance.put('/auth/notification-settings', settings),
+
+    // Remove the first declaration of loginAdmin
+    // loginAdmin: (email, password) => {
+    //   return instance.post('/auth/admin-login', { email, password });
+    // },
+
+    // Keep only this implementation
+    loginAdmin: async (email, password) => {
+      try {
+        console.log('Admin authentication request for:', email);
+        
+        const response = await instance.post('/auth/admin-login', {
+          email,
+          password
+        });
+        
+        if (response.data && response.data.token) {
+          console.log('Admin login successful');
+          setAuthToken(response.data.token);
+        }
+        
+        return response;
+      } catch (error) {
+        console.error('Admin authentication error:', error);
+        
+        if (error.response) {
+          console.error('Server responded with:', error.response.status, error.response.data);
+        }
+        
+        throw error;
+      }
+    }
   },
   
   appointments: {
@@ -503,6 +535,49 @@ const api = {
     delete: (notificationId) => {
       return instance.delete(`/notifications/${notificationId}`);
     }
+  },
+
+  // Add this to your API service
+  verification: {
+    getRequests: () => instance.get('/admin/verification-requests'),
+    // Change from PUT to POST to match server expectation
+    approveRequest: (requestId) => instance.post(`/admin/verification-requests/${requestId}/approve`),
+    rejectRequest: (requestId, data) => instance.post(`/admin/verification-requests/${requestId}/reject`, data),
+    requestDocuments: (requestId, data) => instance.post(`/admin/verification-requests/${requestId}/request-documents`, data),
+    getStatus: () => instance.get('/doctors/verification-status'),
+    uploadDocuments: (formData) => instance.post('/doctors/verification-documents', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    }),
+  },
+
+  // Add this to your api object
+  payments: {
+    createPaymentIntent: async (appointmentId) => {
+      try {
+        console.log('Creating payment intent for appointment:', appointmentId);
+        const response = await instance.post('/payments/create-payment-intent', { appointmentId });
+        console.log('Payment intent created successfully');
+        return response;
+      } catch (error) {
+        console.error('Error creating payment intent:', error);
+        if (error.response && error.response.data) {
+          console.error('Server message:', error.response.data.message);
+        }
+        throw error;
+      }
+    },
+    confirmPayment: async (appointmentId, paymentIntentId) => {
+      try {
+        const response = await instance.post('/payments/confirm-payment', { 
+          appointmentId, 
+          paymentIntentId 
+        });
+        return response;
+      } catch (error) {
+        console.error('Error confirming payment:', error);
+        throw error;
+      }
+    },
   },
 };
 

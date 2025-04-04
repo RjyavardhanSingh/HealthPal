@@ -367,6 +367,30 @@ exports.deleteNotification = async (req, res) => {
   }
 };
 
+// Add this function to your notification controller
+
+// Send notification to all admin users
+exports.sendNotificationToAdmins = async (title, message, data = {}) => {
+  try {
+    const User = require('../models/User');
+    const admins = await User.find({ role: 'admin' });
+    
+    for (const admin of admins) {
+      await exports.sendNotification(
+        admin._id,
+        title,
+        message,
+        data
+      );
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error sending admin notifications:', error);
+    return false;
+  }
+};
+
 
 
 
