@@ -15,13 +15,13 @@ const instance = axios.create({
 // Token management functions
 export const setAuthToken = (token) => {
   if (token) {
+    console.log('Setting auth token');
     localStorage.setItem('authToken', token);
     instance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    console.log('Auth token set');
   } else {
+    console.log('Clearing auth token');
     localStorage.removeItem('authToken');
     delete instance.defaults.headers.common['Authorization'];
-    console.log('Auth token cleared');
   }
 };
 
@@ -96,43 +96,83 @@ instance.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
     
-    // If error is 401 and we haven't tried to refresh token yet
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Only attempt to refresh token if:
+    // 1. We got a 401 (Unauthorized)
+    // 2. The request wasn't to an auth endpoint (prevent loops)
+    // 3. The request hasn't been retried already
+    // 4. We're not already refreshing a token
+    if (
+      error.response?.status === 401 &&
+      !originalRequest.url.includes('/auth/') &&
+      !originalRequest._retry &&
+      !isRefreshingToken
+    ) {
       originalRequest._retry = true;
+      isRefreshingToken = true;
       
       try {
-        console.log('401 error caught, attempting to refresh token');
+        // Check if we have a token to refresh
+        const token = localStorage.getItem('authToken');
         
-        // Get fresh token from Firebase
-        const currentUser = auth.currentUser;
-        if (currentUser) {
-          console.log('Getting fresh Firebase token');
-          const newFirebaseToken = await currentUser.getIdToken(true);
+        if (!token) {
+          throw new Error('No authentication token');
+        }
+        
+        // Try to refresh the token
+        console.log('Attempting to refresh token');
+        
+        // Here we'd typically call a refresh token endpoint
+        // For now, just check if the current token is valid
+        const response = await instance.post('/auth/verify', { token });
+        
+        if (response.data.success) {
+          console.log('Token still valid, continuing with request');
+          originalRequest.headers['Authorization'] = `Bearer ${token}`;
           
-          // Re-authenticate with backend
-          console.log('Re-authenticating with backend');
-          const response = await instance.post('/auth/authenticate', { idToken: newFirebaseToken });
-          
-          if (response.data && response.data.token) {
-            const newBackendToken = response.data.token;
-            console.log('Got new backend token');
-            
-            // Update token in localStorage and axios headers
-            setAuthToken(newBackendToken);
-            
-            // Update the original request
-            originalRequest.headers['Authorization'] = `Bearer ${newBackendToken}`;
-            
-            console.log('Retrying original request with new token');
-            return instance(originalRequest);
-          }
+          // Process any queued requests
+          processQueue(token);
+          return instance(originalRequest);
         } else {
-          console.log('No Firebase user found for token refresh');
-          clearAuthToken();
+          // Token invalid, forcing logout
+          console.log('Token invalid, forcing logout');
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('currentUser');
+          
+          // Redirect to login - NO TOAST HERE
+          window.location.href = '/login';
+          
+          // Reject all queued requests
+          processQueue(null, new Error('Session expired'));
+          return Promise.reject(new Error('Session expired'));
         }
       } catch (refreshError) {
         console.error('Token refresh failed:', refreshError);
+        
+        // Clear auth data
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('currentUser');
+        
+        // Process failed queue - NO TOAST HERE
+        processQueue(null, refreshError);
+        
+        // Redirect to login after a short delay
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 100);
+        
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshingToken = false;
       }
+    }
+    
+    // If this is a 401 from an auth endpoint, don't retry
+    if (error.response?.status === 401 && (
+      originalRequest.url.includes('/auth/login') || 
+      originalRequest.url.includes('/auth/authenticate')
+    )) {
+      console.log('Auth endpoint returned 401, not retrying');
+      return Promise.reject(error);
     }
     
     return Promise.reject(error);
@@ -261,6 +301,37 @@ instance.interceptors.request.use(
   }
 );
 
+// Add an interceptor to handle verification errors
+instance.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  (error) => {
+    if (error.response && error.response.status === 403 && error.response.data.pendingVerification) {
+      // Redirect to pending verification page if this is a verification error
+      window.location.href = '/doctor/pending-verification';
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Add a deduplication mechanism for auth requests
+let isRefreshingToken = false;
+let failedQueue = [];
+
+// Process the queue of failed requests
+const processQueue = (token = null, error = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  
+  failedQueue = [];
+};
+
 // Complete API object with all endpoints
 const api = {
   // Include utility functions
@@ -271,6 +342,31 @@ const api = {
   initToken,
   
   auth: {
+    login: async (email, password) => {
+      try {
+        console.log('Attempting login with credentials:', { email });
+        
+        // Send credentials to backend
+        const response = await instance.post('/auth/login', {
+          email,
+          password
+        });
+        
+        if (response.data && response.data.token) {
+          // Store token in localStorage
+          localStorage.setItem('authToken', response.data.token);
+          // Update authorization header for future requests
+          instance.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+          console.log('Authentication successful, token saved');
+        }
+        
+        return response;
+      } catch (error) {
+        console.error('Authentication error:', error);
+        throw error;
+      }
+    },
+    
     authenticate: async (token, provider = 'google') => {
       try {
         console.log(`Authenticating with ${provider} token`);
@@ -320,11 +416,17 @@ const api = {
       }
     },
     
-    // Other auth methods...
     register: (userData) => instance.post('/auth/register', userData),
     registerGoogle: (userData) => instance.post('/auth/register-google', userData),
-    login: (credentials) => instance.post('/auth/login', credentials),
-    verifyToken: () => instance.get('/auth/verify'),
+    verifyToken: async () => {
+      try {
+        const response = await instance.get('/auth/verify');
+        return response;
+      } catch (error) {
+        console.error('Token verification error:', error);
+        throw error;
+      }
+    },
     getMe: () => instance.get('/auth/me'),
     updateProfile: (data) => instance.put('/auth/profile', data),
     updatePassword: (currentPassword, newPassword) => 
@@ -332,52 +434,63 @@ const api = {
     updateNotificationSettings: (settings) => 
       instance.put('/auth/notification-settings', settings),
 
-    // Remove the first declaration of loginAdmin
-    // loginAdmin: (email, password) => {
-    //   return instance.post('/auth/admin-login', { email, password });
-    // },
-
-    // Keep only this implementation
     loginAdmin: async (email, password) => {
       try {
         console.log('Admin authentication request for:', email);
         
-        const response = await instance.post('/auth/admin-login', {
+        // Ensure we're using /api prefix in the URL
+        const response = await instance.post('/api/auth/admin-login', {
           email,
           password
         });
         
-        if (response.data && response.data.token) {
-          console.log('Admin login successful');
-          setAuthToken(response.data.token);
-        }
-        
         return response;
       } catch (error) {
         console.error('Admin authentication error:', error);
-        
-        if (error.response) {
-          console.error('Server responded with:', error.response.status, error.response.data);
+        throw error;
+      }
+    },
+
+    verify: () => instance.post('/auth/verify'),
+    
+    loginWithSocial: async (provider) => {
+      try {
+        // Handle social login based on provider
+        if (provider === 'google') {
+          const result = await signInWithPopup(auth, googleProvider);
+          const idToken = await result.user.getIdToken();
+          
+          // Now authenticate with the backend
+          const response = await instance.post('/auth/google', { token: idToken });
+          
+          if (response.data.token) {
+            localStorage.setItem('authToken', response.data.token);
+            localStorage.setItem('currentUser', JSON.stringify(response.data.user));
+            instance.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+          }
+          
+          return response;
         }
         
+        throw new Error(`Unsupported social provider: ${provider}`);
+      } catch (error) {
+        console.error(`${provider} login error:`, error);
         throw error;
       }
     }
   },
   
   appointments: {
-    getAll: (params = {}) => {
-      checkAuthToken(); // Add auth debugging
-      console.log('Fetching appointments with params:', params);
-      return instance.get('/appointments', { params });
-    },
+    getAll: (params) => instance.get('/appointments', { params }),
     getById: (id) => instance.get(`/appointments/${id}`),
-    create: (appointmentData) => instance.post('/appointments', appointmentData),
-    updateStatus: (id, status) => instance.patch(`/appointments/${id}/status`, { status }),
+    create: (data) => instance.post('/appointments', data),
+    update: (id, data) => instance.put(`/appointments/${id}`, data),
     cancel: (id, reason) => instance.put(`/appointments/${id}/cancel`, { reason }),
-    getAvailableDates: (doctorId) => instance.get(`/appointments/available-dates/${doctorId}`),
-    getAvailableTimeSlots: (doctorId, date) => 
-      instance.get(`/appointments/available-slots/${doctorId}`, { params: { date } }),
+    updateStatus: (id, status) => instance.patch(`/appointments/${id}/status`, { status }),
+    submitReview: (id, data) => instance.post(`/appointments/${id}/review`, data),
+    createByStaff: (data) => instance.post('/appointments/admin', data),
+    getAvailableDates: (doctorId) => instance.get(`/doctors/${doctorId}/available-dates`),
+    getAvailableTimeSlots: (doctorId, date) => instance.get(`/doctors/${doctorId}/available-slots/${date}`)
   },
   
   doctors: {
@@ -441,11 +554,13 @@ const api = {
   },
   
   consultations: {
-    create: (consultationData) => instance.post('/consultations', consultationData),
+    create: (data) => instance.post('/consultations', data),
     getById: (id) => instance.get(`/consultations/${id}`),
     getByAppointment: (appointmentId) => instance.get(`/consultations/appointment/${appointmentId}`),
-    getByPatient: (patientId) => instance.get(`/consultations/patient/${patientId}`),
-    getByDoctor: (doctorId) => instance.get(`/consultations/doctor/${doctorId}`)
+    update: (id, data) => instance.put(`/consultations/${id}`, data),
+    
+    // Add this method for doctor's consultations
+    getByPatient: (patientId) => instance.get(`/consultations/patient/${patientId}`)
   },
   
   medicalRecords: {
@@ -488,10 +603,8 @@ const api = {
   },
   
   video: {
-    getToken: (channelName, uid, role) => 
-      instance.post('/video/token', { channelName, uid, role }),
-    getCallDetails: (appointmentId) => 
-      instance.get(`/video/call/${appointmentId}`)
+    getToken: (data) => instance.post('/video/token', data),
+    getCallDetails: (appointmentId) => instance.get(`/video/call/${appointmentId}`)
   },
   
   reminders: {
@@ -537,20 +650,24 @@ const api = {
     }
   },
 
-  // Add this to your API service
+  // Update or ensure the verification endpoints are properly defined in your API service
   verification: {
-    getRequests: () => instance.get('/admin/verification-requests'),
-    // Change from PUT to POST to match server expectation
-    approveRequest: (requestId) => instance.post(`/admin/verification-requests/${requestId}/approve`),
-    rejectRequest: (requestId, data) => instance.post(`/admin/verification-requests/${requestId}/reject`, data),
-    requestDocuments: (requestId, data) => instance.post(`/admin/verification-requests/${requestId}/request-documents`, data),
-    getStatus: () => instance.get('/doctors/verification-status'),
-    uploadDocuments: (formData) => instance.post('/doctors/verification-documents', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+    getStatus: () => instance.get('/verification/doctors/verification-status'),
+    uploadDocuments: (formData) => instance.post('/verification/doctors/verification-documents', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
     }),
+    submitDocuments: (data) => instance.post('/verification/doctors/verification-documents', data),
+    
+    // Admin endpoints
+    getRequests: () => instance.get('/verification/admin/verification-requests'),
+    getRequest: (id) => instance.get(`/verification/admin/verification-requests/${id}`),
+    approveRequest: (id) => instance.post(`/verification/admin/verification-requests/${id}/approve`),
+    rejectRequest: (id, data) => instance.post(`/verification/admin/verification-requests/${id}/reject`, data),
+    requestDocuments: (id, data) => instance.post(`/verification/admin/verification-requests/${id}/request-documents`, data)
   },
 
-  // Add this to your api object
   payments: {
     createPaymentIntent: async (appointmentId) => {
       try {

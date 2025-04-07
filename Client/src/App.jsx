@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -12,6 +12,7 @@ import DoctorRoute from './components/auth/DoctorRoute';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import LandingPage from './pages/LandingPage';
 import Notifications from './pages/Notifications';
+import AppInit from './components/AppInit';
 
 // Import pages
 import Login from './pages/auth/Login';
@@ -41,6 +42,7 @@ import ConsultationDetails from './pages/doctor/ConsultationDetails';
 import DoctorPrescriptions from './pages/doctor/DoctorPrescriptions';
 import DoctorPrescriptionDetails from './pages/doctor/DoctorPrescriptionDetails';
 import VerificationStatus from './pages/doctor/VerificationStatus';
+import PendingVerification from './pages/doctor/PendingVerification';
 import AdminLayout from './components/layout/AdminLayout';
 import DoctorVerification from './pages/admin/DoctorVerification';
 
@@ -51,33 +53,34 @@ const App = () => {
   useEffect(() => {
     const validateToken = async () => {
       try {
-        const token = localStorage.getItem('authToken');
+        setValidatingToken(true);
+        const token = localStorage.getItem('authToken'); // Use consistent key
+        const savedUserJson = localStorage.getItem('currentUser');
         
-        if (!token) {
-          // No token, clear any auth state
+        if (!token || !savedUserJson) {
+          // No token or user data, clear any partial auth state
+          localStorage.removeItem('authToken');
           localStorage.removeItem('currentUser');
           setValidatingToken(false);
           return;
         }
         
-        // Optional: Verify token with server
+        // Set API auth header
+        api.setAuthToken(token);
+        
         try {
-          const response = await fetch('http://localhost:5000/api/auth/verify', {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          });
+          // Verify token validity
+          await api.auth.verifyToken();
+          console.log('Token validated successfully');
+        } catch (error) {
+          console.error('Token validation error:', error);
           
-          if (!response.ok) {
-            // Invalid token, clear auth state
+          // Only clear auth state for auth-specific errors
+          if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+            console.warn('Auth error, clearing credentials');
             localStorage.removeItem('authToken');
             localStorage.removeItem('currentUser');
           }
-        } catch (error) {
-          console.error('Token validation error:', error);
-          // On error, assume token is invalid
-          localStorage.removeItem('authToken');
-          localStorage.removeItem('currentUser');
         }
       } finally {
         setValidatingToken(false);
@@ -92,21 +95,58 @@ const App = () => {
   }
 
   return (
-    <Router>
-      <ErrorBoundary>
-        <AuthProvider>
-          <AppContent />
-          <ToastContainer position="top-right" autoClose={5000} />
-        </AuthProvider>
-      </ErrorBoundary>
-    </Router>
+    <AuthProvider>
+      <AppInit>
+        <Router>
+          <ErrorBoundary>
+            <AppContent />
+          </ErrorBoundary>
+        </Router>
+        <ToastContainer position="top-right" autoClose={5000} />
+      </AppInit>
+    </AuthProvider>
   );
+};
+
+// Add this function to check verification status before rendering protected routes
+const DoctorVerificationRoute = ({ children }) => {
+  const { currentUser, isPendingVerification } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    // If this is a doctor with pending verification trying to access a protected route
+    if (currentUser?.role === 'doctor' && isPendingVerification) {
+      // But allow access to verification-related routes
+      if (
+        location.pathname !== '/doctor/verification-status' && 
+        location.pathname !== '/doctor/pending-verification'
+      ) {
+        navigate('/doctor/pending-verification');
+      }
+    }
+  }, [currentUser, isPendingVerification, location, navigate]);
+  
+  // If the doctor is verified, render the children
+  if (currentUser?.role === 'doctor' && !isPendingVerification) {
+    return children;
+  }
+  
+  // For non-doctor routes, just check authentication
+  if (currentUser && currentUser.role !== 'doctor') {
+    return children;
+  }
+  
+  // Show loading while checking
+  return <LoadingSpinner />;
 };
 
 const AppContent = () => {
   const auth = useAuth();
   const [forceLoaded, setForceLoaded] = useState(false);
-  
+  const navigate = useNavigate();
+  const location = useLocation();
+
   if (!auth) {
     return <LoadingSpinner />;
   }
@@ -120,17 +160,20 @@ const AppContent = () => {
     return () => clearTimeout(timer);
   }, [isLoading]);
 
+  // Log auth state on changes
   useEffect(() => {
-    // Debug logging for auth state
     if (currentUser) {
-      console.log('Current authenticated user:', {
-        id: currentUser._id,
-        name: currentUser.name || currentUser.displayName,
-        email: currentUser.email,
-        role: currentUser.role
-      });
+      console.log('Auth state initialized. User role:', currentUser.role);
+    } else if (!isLoading) {
+      console.log('No authenticated user found');
+      
+      // Don't redirect to login if already on login or public pages
+      const publicPaths = ['/login', '/register', '/landing', '/forgot-password'];
+      if (!publicPaths.some(path => location.pathname.startsWith(path))) {
+        console.log('Redirecting to login from:', location.pathname);
+      }
     }
-  }, [currentUser]);
+  }, [currentUser, isLoading, location.pathname]);
 
   if (isLoading && !forceLoaded) {
     return (
@@ -251,12 +294,16 @@ const AppContent = () => {
 
       {/* Doctor routes with DoctorLayout */}
       <Route path="/doctor" element={
-        <DoctorRoute>
+        <DoctorVerificationRoute>
           <DoctorLayout />
-        </DoctorRoute>
+        </DoctorVerificationRoute>
       }>
         <Route index element={<DoctorDashboard />} />
-        <Route path="dashboard" element={<DoctorDashboard />} />
+        <Route path="dashboard" element={
+          <DoctorRoute>
+            <DoctorDashboard />
+          </DoctorRoute>
+        } />
         <Route path="patients" element={<DoctorPatients />} />
         <Route path="appointments" element={<AppointmentManagement />} />
         <Route path="appointments/:id" element={<AppointmentDetails />} />
@@ -264,6 +311,7 @@ const AppContent = () => {
         <Route path="consultations/:id" element={<ConsultationDetails />} />
         <Route path="availability" element={<AvailabilityManagement />} />
         <Route path="verification-pending" element={<VerificationStatus />} />
+        <Route path="pending-verification" element={<PendingVerification />} />
         
         {/* Add these new prescription routes */}
         <Route path="prescriptions" element={<DoctorPrescriptions />} />

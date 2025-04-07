@@ -31,18 +31,27 @@ const medicationRoutes = require('./routes/medicationRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const notificationController = require('./controllers/notificationController');
 const verificationRoutes = require('./routes/verificationRoutes');
-const paymentRoutes = require('./routes/paymentRoutes')
+const paymentRoutes = require('./routes/paymentRoutes');
+const videoRoutes = require('./routes/videoRoutes');
 
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors());
 
-// Debug middleware to log all requests
-app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.originalUrl}`);
-  next();
-});
+// Single CORS configuration 
+app.use(cors({
+  origin: [
+    'https://health-pal-frontend.vercel.app',  // Production frontend
+    'http://localhost:5173',                // Vite dev server
+    'http://localhost:3000',                // Alternative local port
+    'http://127.0.0.1:5173',                // Alternative local address
+    'https://healthpal.vercel.app',         // If you use this domain
+    '*'                                     // Allow all origins for testing (remove in production)
+  ],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 // Add a development route handler to log attempts to access routes that don't exist
 if (process.env.NODE_ENV === 'development') {
@@ -82,7 +91,8 @@ app.use('/api/medications', medicationRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/verification', verificationRoutes);
 app.use('/api', verificationRoutes);
-app.use('/api/payments', paymentRoutes)
+app.use('/api/payments', paymentRoutes);
+app.use('/api/video', videoRoutes);
 
 // Socket.io connection handler
 io.on('connection', (socket) => {
